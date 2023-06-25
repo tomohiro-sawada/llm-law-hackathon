@@ -1,8 +1,3 @@
-# static-eval
+# LLM Law Hackathon 
 
-example of running eval for an individual task:
-
-https://github.com/NomosArtificial/static-eval/blob/main/static-eval/eval_framework_example.ipynb
-
-
-evaluate.py to run all tasks
+We are finetuning MPT-7B base on biglaw and legal bench. As per Miguel's suggestion, we are going to combine this with MPT-7B Instruct (by taking convex combinations of the weights)
