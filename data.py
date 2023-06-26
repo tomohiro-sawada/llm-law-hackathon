@@ -26,7 +26,7 @@ def load_data(config, tokenizer, split="train[:1%]", streaming=True):
     else:
         ds_kwargs = {"num_proc": config["train_args"]["num_proc"]}
 
-    print(train_dataset[1]["text"])
+    print(train_dataset[2]["text"])
     train_dataset = train_dataset.map(lambda ele: tokenizer(ele["text"],
                                                             truncation=True,
                                                             padding="max_length",
