@@ -1,5 +1,0 @@
-BACKENDS = [
-    'torch',
-    'cuda',
-    'triton'
-]

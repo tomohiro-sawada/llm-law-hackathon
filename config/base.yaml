@@ -1,0 +1,41 @@
+model_path: "mosaicml/mpt-7b"
+tokenizer_path: "EleutherAI/gpt-neox-20b"
+save_dir: "tsawada/llmlh"
+
+train_args:
+  output_dir: "tsawada/llmlh"
+  num_train_epochs: 1
+  logging_steps: 100
+  save_strategy: "steps"
+  per_device_train_batch_size: 4 
+  per_device_eval_batch_size: 4
+  warmup_steps: 100
+  weight_decay: 0.01
+  learning_rate: 5.0e-5
+  save_total_limit: 1
+  logging_dir: "./logs"
+  fp16: false
+  bf16: true
+  evaluation_strategy: "steps"
+  eval_steps: 1000
+  save_steps: 1000
+  seed: 42
+  log_level: "debug"
+  max_steps: 6468000
+  report_to: "wandb"
+  gradient_checkpointing: true
+  resume_from_checkpoint: null
+  project_name: "law-finetune"
+  entity: "tsawada"
+  streaming: false
+  # if streaming is false, how many processes to use to process data
+  num_proc: 64
+  num_epochs: 1
+
+wandb: false
+max_length: 2048
+learning_rate: 5.0e-5
+use_lora: false
+data_path: "pile-of-law/pile-of-law"
+data_config: "atticus_contracts"
+cache_dir: "cache"
