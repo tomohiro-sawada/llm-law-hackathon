@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from transformers import DataCollatorForLanguageModeling
 
 
-def load_data(config, tokenizer, split="train[:5%]", streaming=True):
+def load_data(config, tokenizer, split="train[:1%]", streaming=True):
     dataset = load_dataset(config["data_path"], config["data_config"], cache_dir= config["cache_dir"], split=split, streaming=streaming)
 
     test_size = 0.02 
@@ -26,21 +26,21 @@ def load_data(config, tokenizer, split="train[:5%]", streaming=True):
     else:
         ds_kwargs = {"num_proc": config["train_args"]["num_proc"]}
 
-    train_dataset = train_dataset.map(lambda ele: tokenizer([t + "<|endoftext|>" for t in ele["text"]],
+    print(train_dataset[1]["text"])
+    train_dataset = train_dataset.map(lambda ele: tokenizer(ele["text"],
                                                             truncation=True,
                                                             padding="max_length",
                                                             max_length=max_length),
-                                                            batched=True,
-                                                            # remove_columns=["response", "prompt"],
-                                                            **ds_kwargs)
+                                    batched=True,
+                                    **ds_kwargs)
 
-    val_dataset = val_dataset.map(lambda ele: tokenizer([t + "<|endoftext|>" for t in ele["text"]],
-                                                            truncation=True,
-                                                            padding="max_length",
-                                                            max_length=max_length),
-                                                            batched=True,
-                                                            # remove_columns=["response", "prompt"],
-                                                            **ds_kwargs)
+    val_dataset = val_dataset.map(lambda ele: tokenizer(ele["text"],
+                                                        truncation=True,
+                                                        padding="max_length",
+                                                        max_length=max_length),
+                                batched=True,
+                                **ds_kwargs)
+
 
     train_dataset = train_dataset.with_format("torch")
 
