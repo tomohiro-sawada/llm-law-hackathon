@@ -61,7 +61,7 @@ def train(config):
         tokenizer.add_special_tokens({'pad_token': '<|endoftext|>'})
 
     with accelerator.main_process_first():
-        train_dataloader, val_dataloader = build_dataloaders(config) # load_data(config, tokenizer, streaming=config["train_args"]["streaming"])
+        train_dataloader = build_dataloaders(config) # load_data(config, tokenizer, streaming=config["train_args"]["streaming"])
 
     checkpoint = config["train_args"]["gradient_checkpointing"]
     if "flash_attn" in config["train_args"]:
@@ -72,7 +72,7 @@ def train(config):
                                                     trust_remote_code=True)
     else:
        model = AutoModelForCausalLM.from_pretrained(config["model_path"], 
-                                                    gradient_checkpointing=checkpoint, 
+                                                    # gradient_checkpointing=checkpoint, 
                                                     use_cache=False if checkpoint else True,
                                                     trust_remote_code=True) 
 
@@ -124,8 +124,8 @@ def train(config):
     device = accelerator.device
     model.to(device)
 
-    model, optimizer, train_dataloader, val_dataloader, scheduler = accelerator.prepare(
-            model, optimizer, train_dataloader, val_dataloader, scheduler
+    model, optimizer, train_dataloader, scheduler = accelerator.prepare(
+            model, optimizer, train_dataloader, scheduler
     )
 
     accelerator.register_for_checkpointing(scheduler)
@@ -160,6 +160,14 @@ def train(config):
     while total_steps < max_steps:
         for step, batch in enumerate(train_dataloader):
             model.train()
+            # batch_size,size = len(batch["input_ids"]),len(train_dataloader) 
+            # batch['attention_mask'] = torch.tensor(
+            #     [batch['attention_mask'][i*batch_size:(i+1)*batch_size]
+            #      for i in range(size)]
+            #     , dtype=torch.uint8, device=device)
+            print(f"batch.keys(): {batch.keys()}")
+            print(f"batch['attention_mask']: {batch['attention_mask']}")
+            print(f"type(batch['attention_mask']): {type(batch['attention_mask'])}")  
             outputs = model(**batch)
             loss = outputs.loss
             # check if nan or inf

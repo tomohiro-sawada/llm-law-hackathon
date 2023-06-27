@@ -1,7 +1,9 @@
 from itertools import chain
 import multiprocessing
+import torch
 from datasets import load_dataset
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, DataCollatorWithPadding
+
 from utils import load_yaml
 import argparse
 
@@ -25,7 +27,7 @@ def build_dataloaders(
         Dataset: The processed dataset ready for training.
     """
     tokenizer = AutoTokenizer.from_pretrained(config["model_path"])
-    dataset = load_dataset(config["data_path"], split="train[:1%]")
+    dataset = load_dataset(config["data_path"], split="train[:300]",cache_dir = config["cache_dir"])
     dataset = dataset.shuffle()
 
     tokenized_dataset = dataset.map(
@@ -53,12 +55,24 @@ def build_dataloaders(
         }
         return result
 
+
     train_dataset = tokenized_dataset.map(
-        group_texts, batched=True, num_proc=32,
+        group_texts, batched=True, num_proc=32 
+    )
+    train_dataset.push_to_hub(config["savedata_dir"], private=True)
+
+    # Create a data collator that will dynamically pad the batches
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
+    # Then, you can use this collator when creating your data loader:
+    train_dataloader = torch.utils.data.DataLoader(
+        train_dataset, 
+        batch_size=config["train_args"]["per_device_train_batch_size"], 
+        shuffle=True, 
+        collate_fn=data_collator,
     )
 
-    train_dataset.push_to_hub(config["savedata_dir"], private=True)
-    return train_dataset
+    return train_dataloader
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -68,4 +82,4 @@ if __name__ == "__main__":
 
     config = load_yaml(args.config_path)
 
-    build_dataloaders(config)
+    print(build_dataloaders(config))
