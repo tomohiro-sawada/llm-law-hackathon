@@ -16,6 +16,7 @@ import argparse
 from utils import load_yaml, format_metrics
 from datetime import timedelta
 from data import load_data
+from tokenization import build_dataloaders
 
     
 def evaluate(accelerator, model, val_dataloader, config ):
@@ -60,7 +61,7 @@ def train(config):
         tokenizer.add_special_tokens({'pad_token': '<|endoftext|>'})
 
     with accelerator.main_process_first():
-        train_dataloader, val_dataloader = load_data(config, tokenizer, streaming=config["train_args"]["streaming"])
+        train_dataloader, val_dataloader = build_dataloaders(config) # load_data(config, tokenizer, streaming=config["train_args"]["streaming"])
 
     checkpoint = config["train_args"]["gradient_checkpointing"]
     if "flash_attn" in config["train_args"]:
@@ -71,7 +72,7 @@ def train(config):
                                                     trust_remote_code=True)
     else:
        model = AutoModelForCausalLM.from_pretrained(config["model_path"], 
-                                                    # gradient_checkpointing=checkpoint, 
+                                                    gradient_checkpointing=checkpoint, 
                                                     use_cache=False if checkpoint else True,
                                                     trust_remote_code=True) 
 
@@ -193,21 +194,21 @@ def train(config):
             if total_steps > 0 and total_steps % config["train_args"]["save_steps"] == 0:
                 accelerator.save_state(f"{config['train_args']['output_dir']}/step_{total_steps}")
                 
-            if total_steps > 0 and total_steps % config["train_args"]["eval_steps"] == 0:
-                val_mlm_loss = evaluate(accelerator, model, val_dataloader, config)
-                log_train = {
-                    "train_mlm_loss": train_clm_loss.compute()
-                }
-                log_val = {
-                    "val_mlm_loss": val_mlm_loss.compute()
-                }
+            # if total_steps > 0 and total_steps % config["train_args"]["eval_steps"] == 0:
+            #     val_mlm_loss = evaluate(accelerator, model, val_dataloader, config)
+            #     log_train = {
+            #         "train_mlm_loss": train_clm_loss.compute()
+            #     }
+            #     log_val = {
+            #         "val_mlm_loss": val_mlm_loss.compute()
+            #     }
 
-                accelerator.log({**log_train, **log_val}, step=total_steps)
+            #     accelerator.log({**log_train, **log_val}, step=total_steps)
 
-                accelerator.print(format_metrics(log_train, "train", f" step {total_steps} "))
-                accelerator.print(format_metrics(log_val, "val", f" step {total_steps} "))
+            #     accelerator.print(format_metrics(log_train, "train", f" step {total_steps} "))
+            #     accelerator.print(format_metrics(log_val, "val", f" step {total_steps} "))
 
-                train_clm_loss.reset()
+            #     train_clm_loss.reset()
 
             if total_steps >= max_steps:
                 break

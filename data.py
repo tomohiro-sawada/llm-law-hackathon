@@ -3,9 +3,12 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformers import DataCollatorForLanguageModeling
 
+from tokenization import build_dataloaders
+
+
 
 def load_data(config, tokenizer, split="train[:1%]", streaming=True):
-    dataset = load_dataset(config["data_path"], config["data_config"], cache_dir= config["cache_dir"], split=split, streaming=streaming)
+    dataset = load_dataset(build_dataloaders(config), cache_dir= config["cache_dir"], split=split, streaming=streaming)
 
     test_size = 0.02 
     if streaming:

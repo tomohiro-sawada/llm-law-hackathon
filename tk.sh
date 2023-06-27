@@ -1,0 +1,1 @@
+python3 tokenization.py --config_path config/base.yaml

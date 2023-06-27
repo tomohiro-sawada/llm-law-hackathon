@@ -36,6 +36,7 @@ wandb: false
 max_length: 2048
 learning_rate: 5.0e-5
 use_lora: false
-data_path: "pile-of-law/pile-of-law"
+data_path: "conceptofmind/pile_of_law"
 data_config: "atticus_contracts"
 cache_dir: "cache"
+savedata_dir: "pol-mpt"

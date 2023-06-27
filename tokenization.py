@@ -2,12 +2,15 @@ from itertools import chain
 import multiprocessing
 from datasets import load_dataset
 from transformers import AutoTokenizer
+from utils import load_yaml
+import argparse
 
 # dataloaders
 
 
 def build_dataloaders(
-    sequence_length: int = 2048,
+    config,
+    sequence_length: int = 8192,
 ):
     """
     Build data loaders for training.
@@ -21,8 +24,8 @@ def build_dataloaders(
     Returns:
         Dataset: The processed dataset ready for training.
     """
-    tokenizer = AutoTokenizer.from_pretrained("mosaicml/mpt-7b")
-    dataset = load_dataset("conceptofmind/pile_of_law", split="train")
+    tokenizer = AutoTokenizer.from_pretrained(config["model_path"])
+    dataset = load_dataset(config["data_path"], split="train[:1%]")
     dataset = dataset.shuffle()
 
     tokenized_dataset = dataset.map(
@@ -54,7 +57,15 @@ def build_dataloaders(
         group_texts, batched=True, num_proc=32,
     )
 
-    train_dataset.push_to_hub("pol-mpt", private=True)
+    train_dataset.push_to_hub(config["savedata_dir"], private=True)
+    return train_dataset
 
 if __name__ == "__main__":
-    build_dataloaders()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config_path", type=str)
+    # parser.add_argument("--local_rank", type=int)
+    args = parser.parse_args()
+
+    config = load_yaml(args.config_path)
+
+    build_dataloaders(config)
