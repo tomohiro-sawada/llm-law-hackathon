@@ -1,7 +1,7 @@
 import os
 import torch
 from accelerate import Accelerator
-from accelerate.utils import set_seed, InitProcessGroupKwargs
+from accelerate.utils import set_seed, InitProcessGroupKwargs # DummyOptim, DummyScheduler, 
 from torchmetrics import MeanMetric
 from tqdm import tqdm
 from transformers import (
@@ -15,13 +15,12 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, set_seed
 import argparse
 from utils import load_yaml, format_metrics
 from datetime import timedelta
-from data import load_data
-from tokenization import build_dataloaders
+from data_gptj import load_data
 
     
 def evaluate(accelerator, model, val_dataloader, config ):
     model.eval()
-    val_mlm_loss = MeanMetric().to(model.device)
+    val_clm_loss = MeanMetric().to(model.device)
 
     with torch.no_grad():
         for i, batch in enumerate(
@@ -34,9 +33,9 @@ def evaluate(accelerator, model, val_dataloader, config ):
 
             loss_values = accelerator.gather_for_metrics({"loss": loss.detach()})
 
-            val_mlm_loss.update(loss_values["loss"])
+            val_clm_loss.update(loss_values["loss"])
 
-    return val_mlm_loss
+    return val_clm_loss
 
     
 
@@ -61,18 +60,18 @@ def train(config):
         tokenizer.add_special_tokens({'pad_token': '<|endoftext|>'})
 
     with accelerator.main_process_first():
-        train_dataloader = build_dataloaders(config) # load_data(config, tokenizer, streaming=config["train_args"]["streaming"])
+        train_dataloader, val_dataloader = load_data(config, tokenizer, streaming=config["train_args"]["streaming"])
 
     checkpoint = config["train_args"]["gradient_checkpointing"]
     if "flash_attn" in config["train_args"]:
         model = AutoModelForCausalLM.from_pretrained(config["model_path"], 
-                                                    # gradient_checkpointing=checkpoint, 
+                                                    gradient_checkpointing=checkpoint, 
                                                     use_cache=False if checkpoint else True,
                                                     flash_attn=config["train_args"]["flash_attn"],
                                                     trust_remote_code=True)
     else:
        model = AutoModelForCausalLM.from_pretrained(config["model_path"], 
-                                                    # gradient_checkpointing=checkpoint, 
+                                                    gradient_checkpointing=checkpoint, 
                                                     use_cache=False if checkpoint else True,
                                                     trust_remote_code=True) 
 
@@ -111,7 +110,7 @@ def train(config):
         optimizer=optimizer,
         num_warmup_steps=1000,
         num_training_steps=config["train_args"]["max_steps"],
-        )
+    )
     # else:
     #     # it seems like deepspeed lr schedules divide by world size for the total number of steps
     #     # but not for warmup_num_steps
@@ -124,8 +123,8 @@ def train(config):
     device = accelerator.device
     model.to(device)
 
-    model, optimizer, train_dataloader, scheduler = accelerator.prepare(
-            model, optimizer, train_dataloader, scheduler
+    model, optimizer, train_dataloader, val_dataloader, scheduler = accelerator.prepare(
+            model, optimizer, train_dataloader, val_dataloader, scheduler
     )
 
     accelerator.register_for_checkpointing(scheduler)
@@ -160,24 +159,13 @@ def train(config):
     while total_steps < max_steps:
         for step, batch in enumerate(train_dataloader):
             model.train()
-            # batch_size,size = len(batch["input_ids"]),len(train_dataloader) 
-            # batch['attention_mask'] = torch.tensor(
-            #     [batch['attention_mask'][i*batch_size:(i+1)*batch_size]
-            #      for i in range(size)]
-            #     , dtype=torch.uint8, device=device)
-            # print(f"batch.keys(): {batch.keys()}")
-            # print(f"batch['attention_mask']: {batch['attention_mask']}")
-            # print(f"type(batch['attention_mask']): {type(batch['attention_mask'])}") 
             outputs = model(**batch)
             loss = outputs.loss
-            print(f"batch: {batch}")
-            print(f"outputs: {outputs}")
-            print(f"loss: {loss}")
             # check if nan or inf
             if torch.isnan(loss).any():
                 accelerator.print(f"NAN in loss: {loss}")
                 accelerator.print(f"batch: {batch}")
-                accelerator.print(f"step:{step}")
+                accelerator.print(f"step: {step}")
                 accelerator.print(f"lr: {optimizer.param_groups[0]['lr']}")
 
             if torch.isinf(loss).any():
@@ -205,21 +193,21 @@ def train(config):
             if total_steps > 0 and total_steps % config["train_args"]["save_steps"] == 0:
                 accelerator.save_state(f"{config['train_args']['output_dir']}/step_{total_steps}")
                 
-            # if total_steps > 0 and total_steps % config["train_args"]["eval_steps"] == 0:
-            #     val_mlm_loss = evaluate(accelerator, model, val_dataloader, config)
-            #     log_train = {
-            #         "train_mlm_loss": train_clm_loss.compute()
-            #     }
-            #     log_val = {
-            #         "val_mlm_loss": val_mlm_loss.compute()
-            #     }
+            if total_steps > 0 and total_steps % config["train_args"]["eval_steps"] == 0:
+                val_mlm_loss = evaluate(accelerator, model, val_dataloader, config)
+                log_train = {
+                    "train_mlm_loss": train_clm_loss.compute()
+                }
+                log_val = {
+                    "val_mlm_loss": val_mlm_loss.compute()
+                }
 
-            #     accelerator.log({**log_train, **log_val}, step=total_steps)
+                accelerator.log({**log_train, **log_val}, step=total_steps)
 
-            #     accelerator.print(format_metrics(log_train, "train", f" step {total_steps} "))
-            #     accelerator.print(format_metrics(log_val, "val", f" step {total_steps} "))
+                accelerator.print(format_metrics(log_train, "train", f" step {total_steps} "))
+                accelerator.print(format_metrics(log_val, "val", f" step {total_steps} "))
 
-            #     train_clm_loss.reset()
+                train_clm_loss.reset()
 
             if total_steps >= max_steps:
                 break
@@ -239,7 +227,7 @@ def train(config):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_path", type=str)
-    # parser.add_argument("--local_rank", type=int)
+    parser.add_argument("--local_rank", type=int)
     args = parser.parse_args()
 
     config = load_yaml(args.config_path)

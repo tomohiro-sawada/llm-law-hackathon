@@ -43,17 +43,27 @@ def build_dataloaders(
     # Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.
     def group_texts(examples):
         # Concatenate all texts.
+        # concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+        # total_length = config["length"]# len(concatenated_examples[list(examples.keys())[0]])
+        # # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+        # # customize this part to your needs.
+        # # if total_length >= block_size:
+        # #     total_length = (total_length // block_size) * block_size
+        # # Split by chunks of max_len.
+        # result = {
+        #     k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
+        #     for k, t in concatenated_examples.items()
+        # }
+
         concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-        total_length = config["length"]# len(concatenated_examples[list(examples.keys())[0]])
-        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-        # customize this part to your needs.
-        # if total_length >= block_size:
-        #     total_length = (total_length // block_size) * block_size
+        total_length = config["length"]
         # Split by chunks of max_len.
         result = {
             k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
             for k, t in concatenated_examples.items()
         }
+        # Create labels, same as input_ids but with -100 where there are padding tokens
+        result["labels"] = [[-100 if token == tokenizer.pad_token_id else token for token in text] for text in result["input_ids"]]
         return result
 
 

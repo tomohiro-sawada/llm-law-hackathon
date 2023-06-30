@@ -1,0 +1,1 @@
+python3 train-gptj.py --config_path config/gpt-j.yaml
