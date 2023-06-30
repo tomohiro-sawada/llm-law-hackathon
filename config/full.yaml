@@ -1,9 +1,9 @@
 model_path: "mosaicml/mpt-7b"
 tokenizer_path: "EleutherAI/gpt-neox-20b"
-save_dir: "tsawada/llmlh"
+save_dir: "tsawada/llmlh-full"
 
 train_args:
-  output_dir: "/admin/home-tsawada/llm-law-hackathon/output"
+  output_dir: "tsawada/llmlh-full"
   num_train_epochs: 1
   logging_steps: 100
   save_strategy: "steps"
@@ -21,11 +21,11 @@ train_args:
   save_steps: 1000
   seed: 42
   log_level: "debug"
-  max_steps: 10 # 6468000
+  max_steps: 6468000
   report_to: "wandb"
   gradient_checkpointing: true
   resume_from_checkpoint: null
-  project_name: "law-finetune"
+  project_name: "law-finetune-full"
   entity: "tsawada"
   streaming: false
   # if streaming is false, how many processes to use to process data
@@ -39,6 +39,6 @@ use_lora: false
 data_path: "conceptofmind/pile_of_law"
 data_config: "atticus_contracts"
 cache_dir: "cache"
-savedata_dir: "pol-mpt"
-tokenized_dataset_cache: "pol-mpt-tokenized"
+savedata_dir: "pol-mpt-full"
+tokenized_dataset_cache: "pol-mpt-tokenized-full"
 length: 200

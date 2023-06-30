@@ -1,1 +1,1 @@
-python3 train.py --config_path config/base.yaml
+accelerate launch --num_processes=8 train.py --config_path config/base.yaml   

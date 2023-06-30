@@ -1,4 +1,6 @@
 **/__pycache__/
 *_RESULTS.CSV
 **/wandb/
-**/cache/
+**/cache
+**/output
+**/tsawada/

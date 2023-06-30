@@ -170,9 +170,9 @@ def train(config):
             # print(f"type(batch['attention_mask']): {type(batch['attention_mask'])}") 
             outputs = model(**batch)
             loss = outputs.loss
-            print(f"batch: {batch}")
-            print(f"outputs: {outputs}")
-            print(f"loss: {loss}")
+            # print(f"batch: {batch}")
+            # print(f"outputs: {outputs}")
+            # print(f"loss: {loss}")
             # check if nan or inf
             if torch.isnan(loss).any():
                 accelerator.print(f"NAN in loss: {loss}")
