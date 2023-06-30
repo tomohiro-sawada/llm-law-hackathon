@@ -12,7 +12,7 @@ import argparse
 
 def build_dataloaders(
     config,
-    sequence_length: int = 8192,
+    sequence_length: int = 2048,
 ):
     """
     Build data loaders for training.
@@ -27,7 +27,7 @@ def build_dataloaders(
         Dataset: The processed dataset ready for training.
     """
     tokenizer = AutoTokenizer.from_pretrained(config["model_path"])
-    dataset = load_dataset(config["data_path"], split="train[:300]",cache_dir = config["cache_dir"])
+    dataset = load_dataset(config["data_path"], split=f"train[:{config['length']}]",cache_dir = config["cache_dir"])
     dataset = dataset.shuffle()
 
     tokenized_dataset = dataset.map(
@@ -37,17 +37,18 @@ def build_dataloaders(
         num_proc=32,
     )
 
+    sequence_length = config["max_length"]
     block_size = sequence_length
 
     # Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.
     def group_texts(examples):
         # Concatenate all texts.
         concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
+        total_length = config["length"]# len(concatenated_examples[list(examples.keys())[0]])
         # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
         # customize this part to your needs.
-        if total_length >= block_size:
-            total_length = (total_length // block_size) * block_size
+        # if total_length >= block_size:
+        #     total_length = (total_length // block_size) * block_size
         # Split by chunks of max_len.
         result = {
             k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
@@ -62,6 +63,7 @@ def build_dataloaders(
     train_dataset.push_to_hub(config["savedata_dir"], private=True)
 
     # Create a data collator that will dynamically pad the batches
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
     # Then, you can use this collator when creating your data loader:

@@ -160,16 +160,18 @@ def train(config):
     while total_steps < max_steps:
         for step, batch in enumerate(train_dataloader):
             model.train()
-            # batch_size,size = len(batch["input_ids"]),len(train_dataloader) 
-            # batch['attention_mask'] = torch.tensor(
-            #     [batch['attention_mask'][i*batch_size:(i+1)*batch_size]
-            #      for i in range(size)]
-            #     , dtype=torch.uint8, device=device)
+            batch_size,size = len(batch["input_ids"]),len(train_dataloader) 
+            batch['attention_mask'] = torch.tensor(
+                [batch['attention_mask'][i*batch_size:(i+1)*batch_size]
+                 for i in range(size)]
+                , dtype=torch.uint8, device=device)
             print(f"batch.keys(): {batch.keys()}")
             print(f"batch['attention_mask']: {batch['attention_mask']}")
             print(f"type(batch['attention_mask']): {type(batch['attention_mask'])}")  
             outputs = model(**batch)
             loss = outputs.loss
+            print(f"batch: {batch}")
+            print(f"outputs: {outputs}")
             # check if nan or inf
             if torch.isnan(loss).any():
                 accelerator.print(f"NAN in loss: {loss}")
